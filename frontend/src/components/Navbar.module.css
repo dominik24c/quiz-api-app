@@ -1,0 +1,32 @@
+.brand{
+    width: 50px;
+}
+
+.brand > a > img{
+    height: 50px;
+}
+
+.links{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.link{
+    display: inline-block;
+    margin: 0 0.5rem;
+}
+
+.link > a{
+    color:white;
+    padding: 4px 2px;
+    text-decoration: none;
+    display: inline-block;
+    border-bottom: 1px solid white;
+}
+
+.link > a:hover{
+    color:#04b104;
+    background-color: #555;
+    border-color: #04b104;
+}
