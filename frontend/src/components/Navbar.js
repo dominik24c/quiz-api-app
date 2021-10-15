@@ -1,10 +1,14 @@
-import React from "react";
+import React, {useContext} from "react";
 import QuizIcon from '../quiz.png';
 import classes from './Navbar.module.css';
 import {NavLink} from "react-router-dom";
+import AuthContext from "../context/AuthContext";
+import LogoutBtn from './auth/LogoutBtn';
 
 const Navbar = () => {
-    return(
+    const authContext = useContext(AuthContext);
+
+    return (
         <React.Fragment>
             <div className={classes.brand}>
                 <NavLink to="/">
@@ -13,15 +17,29 @@ const Navbar = () => {
             </div>
             <nav>
                 <ul className={classes.links}>
-                    <li className={classes.link}>
-                        <NavLink to="/login">Login</NavLink>
-                    </li>
-                    <li className={classes.link}>
-                        <NavLink to="/sign-up">Sign up</NavLink>
-                    </li>
-                    <li className={classes.link}>
-                        <NavLink to="/logout">Logout</NavLink>
-                    </li>
+                    {!authContext.isLoggedIn &&
+                    <React.Fragment>
+                        <li className={classes.link}>
+                            <NavLink to="/login">Login</NavLink>
+                        </li>
+                        <li className={classes.link}>
+                            <NavLink to="/sign-up">Sign up</NavLink>
+                        </li>
+                    </React.Fragment>
+                    }
+                    {
+                        authContext.isLoggedIn &&
+                        <React.Fragment>
+                            <li className={classes.link}>
+                                <NavLink to="/quizzes">Quizzes</NavLink>
+                            </li>
+                            <li className={classes.link}>
+                                <NavLink to="/logout">
+                                    <LogoutBtn/>
+                                </NavLink>
+                            </li>
+                        </React.Fragment>
+                    }
                 </ul>
             </nav>
         </React.Fragment>

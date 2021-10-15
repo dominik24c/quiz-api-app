@@ -27,12 +27,12 @@ class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
 
-    def validate(self, data):
-        print(data)
-        username = data.get('username', None)
+    def validate(self, data) -> User:
+        # print(data)
+        username ls= data.get('username', None)
         password = data.get('password', None)
         user = authenticate(username=username, password=password)
 
         if user and user.is_active:
             return user
-        raise serializers.ValidationError(f"Incorrect credentials! {user is None}")
+        raise serializers.ValidationError(f"Incorrect credentials!")
