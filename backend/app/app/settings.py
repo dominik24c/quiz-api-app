@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'rest_framework_jwt',
     'corsheaders',
 
-    'account'
+    'account',
+    'quiz'
 ]
 
 MIDDLEWARE = [
