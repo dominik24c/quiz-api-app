@@ -29,14 +29,27 @@ class QuestionSerializer(serializers.ModelSerializer):
         }
 
     def validate_answers(self, value):
+        count = 0
+        for answer in value:
+            is_correct = answer['is_correct']
+            if is_correct:
+                count += 1
+
+        if count == 0 and len(value) > 0:
+            raise serializers.ValidationError({
+                "error": f"You need at least one correct answer per question!!!",
+            })
+
         if len(value) < ANSWERS_MIN_LENGTH:
             raise serializers.ValidationError({
-                "error": "You need at least 2 answers for each question to create quiz!!!",
+                "error": f"You need at least {ANSWERS_MIN_LENGTH} "
+                         f"answers for each question to create quiz!!!",
             })
 
         elif len(value) > ANSWERS_MAX_LENGTH:
             raise serializers.ValidationError({
-                "error": f"You exceed the limit of answers for each question, you can have maximum {len(value)} answers."
+                "error": f"You exceed the limit of answers for each question, you can "
+                         f"have maximum {ANSWERS_MAX_LENGTH} answers per question."
             })
 
         return value
@@ -60,6 +73,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 class QuizSerializer(serializers.ModelSerializer):
     category = serializers.CharField(min_length=3, max_length=100)
     questions = QuestionSerializer(many=True, source='question_set')
+    category_obj: Category = None
 
     class Meta:
         model = Quiz
@@ -70,25 +84,29 @@ class QuizSerializer(serializers.ModelSerializer):
 
     def validate_questions(self, value):
         if len(value) < QUESTIONS_MIN_LENGTH:
-            raise serializers.ValidationError({"error": "You need at least 3 questions to create quiz!!!"})
+            raise serializers.ValidationError({"error": f"You need at least {QUESTIONS_MIN_LENGTH}"
+                                                        f" questions to create quiz!!!"})
         elif len(value) > QUESTIONS_MAX_LENGTH:
             raise serializers.ValidationError({
-                "error": f"You exceed the limit of questions per quiz for each question, you can have maximum {len(value)} questions."
+                "error": f"You exceed the limit of questions per quiz, you can "
+                         f"have maximum {QUESTIONS_MAX_LENGTH} questions per quiz. "
             })
         return value
 
-    def create(self, validated_data) -> Quiz:
-        category = validated_data.pop('category')
-        questions = validated_data.pop('question_set')
-
+    def validate_category(self, value):
         try:
-            c = Category.objects.get(name=category)
+            self.category_obj = Category.objects.get(name=value)
         except ObjectDoesNotExist:
             raise serializers.ValidationError({"error": "Category doesn't exists!"})
+        return value
+
+    def create(self, validated_data) -> Quiz:
+        validated_data.pop('category')
+        questions = validated_data.pop('question_set')
 
         user = self.context['request'].user
 
-        quiz = Quiz.objects.create(owner=user, category=c, **validated_data)
+        quiz = Quiz.objects.create(owner=user, category=self.category_obj, **validated_data)
 
         for question in questions:
             answers = question.pop('answer_set')
