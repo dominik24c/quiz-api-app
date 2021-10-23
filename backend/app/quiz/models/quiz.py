@@ -9,7 +9,7 @@ class Quiz(models.Model):
     category = models.ForeignKey(Category, on_delete=models.RESTRICT)
     title = models.CharField(max_length=100)
     description = models.TextField()
-    is_created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [

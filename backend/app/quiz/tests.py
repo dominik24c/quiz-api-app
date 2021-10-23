@@ -12,6 +12,16 @@ from .factory import CategoryFactory, AnswerFactory, QuizFactory, QuestionFactor
 from .test_data_dict import DATA
 
 
+def create_test_data(number_of_quizzes=1) -> None:
+    [CategoryFactory.create(category_name) for category_name in TEST_CATEGORIES]
+    user = User.objects.get(username='test_user')
+    for _ in range(number_of_quizzes):
+        quiz = QuizFactory.create(user)
+        question = QuestionFactory.create(quiz)
+        AnswerFactory.create(question)
+        AnswerFactory.create(question)
+
+
 class BaseAuthApiTestCase(APITestCase):
 
     def setUp(self) -> None:
@@ -19,8 +29,10 @@ class BaseAuthApiTestCase(APITestCase):
         user.set_password('test1234')
         user.save()
 
-    def _test_get(self, namespace: str, status: str) -> Response:
-        url = reverse(namespace)
+    def _test_get(self, namespace: str, status: str, kwargs=None) -> Response:
+        if kwargs is None:
+            kwargs = {}
+        url = reverse(namespace, kwargs=kwargs)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status)
 
@@ -50,17 +62,19 @@ class BaseApiTestCase(BaseAuthApiTestCase):
         self.client.force_authenticate(user=user)
 
 
-
 class AuthorizationApiTest(BaseAuthApiTestCase):
     def test_get_list_of_categories_when_user_is_not_authenticated(self) -> None:
         self._test_get('quiz:list-category', status.HTTP_401_UNAUTHORIZED)
 
     def test_list_quiz_when_user_is_not_authenticated(self) -> None:
-        self._test_get('quiz:create-list-quiz', status.HTTP_401_UNAUTHORIZED)
+        self._test_get('quiz:create-quiz', status.HTTP_401_UNAUTHORIZED)
 
     def test_create_quiz_when_user_is_not_authenticated(self) -> None:
         data = copy.deepcopy(DATA)
-        self._test_post('quiz:create-list-quiz', status.HTTP_401_UNAUTHORIZED, data)
+        self._test_post('quiz:create-quiz', status.HTTP_401_UNAUTHORIZED, data)
+
+    def test_list_quizzes_on_homepage_when_user_is_not_authenticated(self) -> None:
+        self._test_get('quiz:list-quiz', status.HTTP_200_OK)
 
 
 class CategoryApiTest(BaseApiTestCase):
@@ -84,7 +98,7 @@ class QuizApiTest(BaseApiTestCase):
         for i, k in enumerate(keys):
             data[k] = values[i]
 
-        response = self._test_post('quiz:create-list-quiz', status.HTTP_400_BAD_REQUEST, tmp_data)
+        response = self._test_post('quiz:create-quiz', status.HTTP_400_BAD_REQUEST, tmp_data)
 
         tmp_response = response.data
         # if len(keys_of_data) == 4:
@@ -104,26 +118,25 @@ class QuizApiTest(BaseApiTestCase):
                     value = value[0]
                 self.assertEqual(value, expected_values[i])
 
-    def test_list_quiz_with_valid_data(self) -> None:
-        [CategoryFactory.create(category_name) for category_name in TEST_CATEGORIES]
-        user = User.objects.get(username='test_user')
-        quiz = QuizFactory.create(user)
-        question = QuestionFactory.create(quiz)
-        AnswerFactory.create(question)
-        AnswerFactory.create(question)
+    def test_retrieve_quiz(self) -> None:
+        create_test_data(2)
 
-        response = self._test_get('quiz:create-list-quiz', status.HTTP_200_OK)
-        quizzes = response.data['quizzes']
-        self.assertEqual(len(quizzes), 1)
+        response = self._test_get('quiz:retrieve-quiz', status.HTTP_200_OK, {'pk': 1})
+        # quizzes = response.data['quizzes']
+        data = response.data
+        self.assertEqual(data['id'], 1)
+
+    def test_retrieve_quiz_when_there_are_not_any_quizzes(self) -> None:
+        self._test_get('quiz:retrieve-quiz', status.HTTP_404_NOT_FOUND, {'pk': 1})
 
     def test_create_quiz_with_valid_data(self) -> None:
         CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
 
-        response = self._test_post('quiz:create-list-quiz', status.HTTP_200_OK, data)
+        response = self._test_post('quiz:create-quiz', status.HTTP_200_OK, data)
         self.assertEqual(response.data['message'], 'Quiz was created!')
 
-    def test_validation_of_create_quiz_if_category_doesnt_exist(self)->None:
+    def test_validation_of_create_quiz_if_category_doesnt_exist(self) -> None:
         data = copy.deepcopy(DATA)
         keys = [self.CATEGORY]
         values = ['category']
@@ -137,7 +150,8 @@ class QuizApiTest(BaseApiTestCase):
         expected_values = ['Ensure this field has at least 3 characters.']
         self._validation_quiz_handler(values, keys, expected_values, data)
 
-    def test_validation_of_create_quiz_by_blanks_title_description_category_and_empty_list_of_the_questions(self) -> None:
+    def test_validation_of_create_quiz_by_blanks_title_description_category_and_empty_list_of_the_questions(
+            self) -> None:
         data = copy.deepcopy(DATA)
         keys = [self.TITLE, self.DESC, self.CATEGORY, self.QUESTIONS]
         values = ['', '', '', []]
@@ -156,7 +170,7 @@ class QuizApiTest(BaseApiTestCase):
 
         self._validation_quiz_handler([], [], expected_values, data)
 
-    def test_validation_of_create_quiz_by_invalid_data_of_answer_and_is_correct_fields(self)->None:
+    def test_validation_of_create_quiz_by_invalid_data_of_answer_and_is_correct_fields(self) -> None:
         CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
 
@@ -166,7 +180,7 @@ class QuizApiTest(BaseApiTestCase):
 
         self._validation_quiz_handler(values, keys, expected_values, data, keys_of_data=['questions', 0, 'answers', 2])
 
-    def test_validation_of_create_quiz_by_lack_of_one_correct_answer_per_question(self)->None:
+    def test_validation_of_create_quiz_by_lack_of_one_correct_answer_per_question(self) -> None:
         data = copy.deepcopy(DATA)
         keys = [self.ANSWER, self.IS_CORRECT]
         values = ['a', False]
@@ -202,3 +216,21 @@ class QuizApiTest(BaseApiTestCase):
             'You exceed the limit of answers for each question, you can have maximum 4 answers per question.']
 
         self._validation_quiz_handler([], [], expected_values, data, keys_of_data=['questions', 0])
+
+
+class QuizListApiTest(BaseApiTestCase):
+    def test_list_quiz(self) -> None:
+        create_test_data(2)
+        response = self._test_get('quiz:list-quiz', status.HTTP_200_OK)
+        quizzes = response.data['quizzes']
+        quizzes_data = response.data['quizzes'][0]
+
+        self.assertEqual(len(quizzes), 2)
+        self.assertEqual(quizzes_data['title'], 'It is an example')
+        self.assertEqual(quizzes_data['num_of_questions'], 1)
+        self.assertEqual(quizzes_data['owner'], 'test_user')
+
+    def test_list_quiz_when_there_arent_any_quizzes(self) -> None:
+        response = self._test_get('quiz:list-quiz', status.HTTP_200_OK)
+        quizzes = response.data['quizzes']
+        self.assertListEqual(quizzes, [])
