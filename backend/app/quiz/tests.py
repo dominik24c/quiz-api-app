@@ -234,3 +234,41 @@ class QuizListApiTest(BaseApiTestCase):
         response = self._test_get('quiz:list-quiz', status.HTTP_200_OK)
         quizzes = response.data['quizzes']
         self.assertListEqual(quizzes, [])
+
+
+class SolutionCreateApiTest(BaseApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        CategoryFactory.create('Mathematics')
+        data = copy.deepcopy(DATA)
+        self._test_post('quiz:create-quiz', status.HTTP_200_OK, data)
+
+    def test_create_solution_of_quiz_with_valid(self) -> None:
+        data = {
+            "quiz_id": 1,
+            "answers": [
+                1, 5, 7
+            ]
+        }
+        response = self._test_post('quiz:create-solution', status.HTTP_200_OK, data)
+        self.assertEqual(response.data['message'], 'Solution was saved!')
+
+    def test_validation_of_create_solution_of_quiz_by_invalid_answers_keys(self) -> None:
+        data = {
+            "quiz_id": 1,
+            "answers": [
+                1, 5, 79
+            ]
+        }
+        response = self._test_post('quiz:create-solution', status.HTTP_400_BAD_REQUEST, data)
+        self.assertEqual(response.data['answers'][0], 'Invalid pk "79" - object does not exist.')
+
+    def test_validation_of_create_solution_of_quiz_by_invalid_quiz_id(self) -> None:
+        data = {
+            "quiz_id": 133,
+            "answers": [
+                1, 5, 7
+            ]
+        }
+        response = self._test_post('quiz:create-solution', status.HTTP_400_BAD_REQUEST, data)
+        self.assertEqual(response.data['quiz_id']['error'], 'Invalid quiz id passed! Quiz does not exist!!!')
