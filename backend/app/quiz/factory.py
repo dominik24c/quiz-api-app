@@ -1,12 +1,13 @@
 import random
-from typing import List
 
 from django.contrib.auth.models import User
+from django.db.models import QuerySet
 
 from .models.answer import Answer
 from .models.category import Category
 from .models.question import Question
 from .models.quiz import Quiz
+from .models.solution import Solution
 
 TEST_CATEGORIES = ['History', 'Mathematics', 'Music']
 
@@ -56,3 +57,15 @@ class AnswerFactory(object):
         )
         answer.save()
         return answer
+
+
+class SolutionFactory(object):
+    @staticmethod
+    def create(quiz: Quiz, user: User, answers: QuerySet[Answer]) -> Solution:
+        solution = Solution.objects.create(
+            quiz=quiz,
+            solved_by=user,
+        )
+        for answer in answers:
+            solution.add(answer)
+        return solution
