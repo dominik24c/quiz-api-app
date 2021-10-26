@@ -2,33 +2,30 @@
 import copy
 
 from django.contrib.auth.models import User
+from quiz.models import Category, Quiz, Answer
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from .factory import CategoryFactory, AnswerFactory, QuizFactory, QuestionFactory, TEST_CATEGORIES
+from .factories import CategoryFactory, AnswerFactory, QuizFactory, QuestionFactory, UserFactory, SolutionFactory, \
+    TEST_CATEGORIES
 from .test_data_dict import DATA
 
 
 def create_test_data(number_of_quizzes=1) -> None:
-    [CategoryFactory.create(category_name) for category_name in TEST_CATEGORIES]
     user = User.objects.get(username='test_user')
+    category = Category.objects.get(name='Mathematics')
+
     for _ in range(number_of_quizzes):
-        quiz = QuizFactory.create(user)
-        question = QuestionFactory.create(quiz)
-        AnswerFactory.create(question)
-        AnswerFactory.create(question)
+        quiz = QuizFactory.create(owner=user, category=category, title='It is an example')
+        question = QuestionFactory(quiz=quiz)
+        AnswerFactory(question=question, is_correct=True)
+        AnswerFactory(question=question, is_correct=False)
 
 
 class BaseAuthApiTestCase(APITestCase):
-
-    def setUp(self) -> None:
-        user = User(username='test_user', email='test@gmail.com')
-        user.set_password('test1234')
-        user.save()
-
     def _test_get(self, namespace: str, status: str, kwargs=None) -> Response:
         if kwargs is None:
             kwargs = {}
@@ -56,6 +53,14 @@ class BaseApiTestCase(BaseAuthApiTestCase):
     ANSWER = 'answer'
     IS_CORRECT = 'is_correct'
 
+    @classmethod
+    def setUpClass(cls):
+        super(BaseApiTestCase, cls).setUpClass()
+        user = UserFactory(username='test_user', email='test@test.pl')
+        user.set_password('test1234')
+        for category_name in TEST_CATEGORIES:
+            category = CategoryFactory(name=category_name)
+
     def setUp(self) -> None:
         super().setUp()
         user = User.objects.get(username='test_user')
@@ -79,7 +84,6 @@ class AuthorizationApiTest(BaseAuthApiTestCase):
 
 class CategoryApiTest(BaseApiTestCase):
     def test_get_list_of_categories(self) -> None:
-        [CategoryFactory.create(category_name) for category_name in TEST_CATEGORIES]
         response = self._test_get('quiz:list-category', status.HTTP_200_OK)
         self.assertCountEqual(response.data['categories'], TEST_CATEGORIES)
         self.assertListEqual(response.data['categories'], TEST_CATEGORIES)
@@ -130,7 +134,6 @@ class QuizApiTest(BaseApiTestCase):
         self._test_get('quiz:retrieve-quiz', status.HTTP_404_NOT_FOUND, {'pk': 1})
 
     def test_create_quiz_with_valid_data(self) -> None:
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
 
         response = self._test_post('quiz:create-quiz', status.HTTP_200_OK, data)
@@ -160,7 +163,6 @@ class QuizApiTest(BaseApiTestCase):
         self._validation_quiz_handler(values, keys, expected_values, data)
 
     def test_validation_of_create_quiz_by_exceeded_numbers_of_questions_per_quiz(self) -> None:
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
         questions = data['questions']
         question = copy.deepcopy(questions[0])
@@ -171,7 +173,6 @@ class QuizApiTest(BaseApiTestCase):
         self._validation_quiz_handler([], [], expected_values, data)
 
     def test_validation_of_create_quiz_by_invalid_data_of_answer_and_is_correct_fields(self) -> None:
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
 
         keys = [self.ANSWER, self.IS_CORRECT]
@@ -189,7 +190,6 @@ class QuizApiTest(BaseApiTestCase):
         self._validation_quiz_handler(values, keys, expected_values, data, keys_of_data=['questions', 0, 'answers', 2])
 
     def test_validation_of_create_quiz_by_invalid_points_value_range(self) -> None:
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
         keys = [self.POINTS]
         values = [1000]
@@ -239,7 +239,6 @@ class QuizListApiTest(BaseApiTestCase):
 class SolutionCreateApiTest(BaseApiTestCase):
     def setUp(self) -> None:
         super().setUp()
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
         self._test_post('quiz:create-quiz', status.HTTP_200_OK, data)
 
@@ -277,17 +276,13 @@ class SolutionCreateApiTest(BaseApiTestCase):
 class UsersSolutionsListApiTest(BaseApiTestCase):
     def setUp(self) -> None:
         super().setUp()
-        CategoryFactory.create('Mathematics')
         data = copy.deepcopy(DATA)
         self._test_post('quiz:create-quiz', status.HTTP_200_OK, data)
 
-        data = {
-            "quiz_id": 1,
-            "answers": [
-                1, 5, 7
-            ]
-        }
-        self._test_post('quiz:create-solution', status.HTTP_200_OK, data)
+        quiz = Quiz.objects.get(pk=1)
+        user = User.objects.get(username='test_user')
+        answers = Answer.objects.filter(id__in=[1, 5, 7])
+        SolutionFactory(quiz=quiz, solved_by=user, answers=answers)
 
     def test_list_users_solutions(self):
         response = self._test_get('quiz:list-users-solutions', status.HTTP_200_OK)
