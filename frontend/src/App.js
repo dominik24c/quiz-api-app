@@ -8,6 +8,8 @@ import Footer from './components/Footer';
 
 import AuthContext from "./context/AuthContext";
 import SignUpForm from "./components/auth/SignUpForm";
+import Quizzes from "./components/quiz/Quizzes";
+import SolveQuiz from "./components/quiz/SolveQuiz";
 
 
 const App = () => {
@@ -17,7 +19,7 @@ const App = () => {
         <React.Fragment>
             {ReactDOM.createPortal(<Navbar/>, document.getElementById('navbar'))}
             {ReactDOM.createPortal(<Footer/>, document.getElementById('footer'))}
-            <h2>Quiz app</h2>
+            {/*<h2>Quiz app</h2>*/}
             <Switch>
                 <Route path="/" exact>
                     <h1>Homepage</h1>
@@ -33,8 +35,13 @@ const App = () => {
                 </Route>
                 }
                 {authContext.isLoggedIn &&
-                <Route path="/quizzes">
-                    <h1>Quizzes</h1>
+                <Route path="/quizzes" exact>
+                    <Quizzes/>
+                </Route>
+                }
+                 {authContext.isLoggedIn &&
+                <Route path="/quizzes/:id">
+                    <SolveQuiz/>
                 </Route>
                 }
                 {authContext.isLoggedIn &&
