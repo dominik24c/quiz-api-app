@@ -34,6 +34,9 @@ const Navbar = () => {
                                 <NavLink to="/quizzes">Quizzes</NavLink>
                             </li>
                             <li className={classes.link}>
+                                <NavLink to="/quizzes/create">Create Quiz</NavLink>
+                            </li>
+                            <li className={classes.link}>
                                 <NavLink to="/logout">
                                     <LogoutBtn/>
                                 </NavLink>

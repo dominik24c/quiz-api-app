@@ -1,6 +1,6 @@
 import React, {useContext} from 'react';
 import ReactDOM from 'react-dom';
-import {Switch, Route, Redirect} from 'react-router-dom';
+import {Redirect, Route, Switch} from 'react-router-dom';
 
 import LoginForm from "./components/auth/LoginForm";
 import Navbar from './components/Navbar';
@@ -10,6 +10,7 @@ import AuthContext from "./context/AuthContext";
 import SignUpForm from "./components/auth/SignUpForm";
 import Quizzes from "./components/quiz/Quizzes";
 import SolveQuiz from "./components/quiz/SolveQuiz";
+import CreateQuiz from "./components/quiz/CreateQuiz";
 
 
 const App = () => {
@@ -39,9 +40,19 @@ const App = () => {
                     <Quizzes/>
                 </Route>
                 }
-                 {authContext.isLoggedIn &&
+                {authContext.isLoggedIn &&
+                <Route path="/quizzes/create">
+                    <CreateQuiz/>
+                </Route>
+                }
+                {authContext.isLoggedIn &&
                 <Route path="/quizzes/:id">
                     <SolveQuiz/>
+                </Route>
+                }
+                {authContext.isLoggedIn &&
+                <Route path="/logout">
+                    <CreateQuiz/>
                 </Route>
                 }
                 {authContext.isLoggedIn &&
@@ -49,7 +60,7 @@ const App = () => {
                     <h1>Logout</h1>
                 </Route>
                 }
-                <Route path="*" >
+                <Route path="*">
                     <Redirect to="/"/>
                 </Route>
             </Switch>
